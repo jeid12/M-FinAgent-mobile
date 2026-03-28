@@ -211,7 +211,7 @@ class AppState extends ChangeNotifier {
     _socket = null;
 
     try {
-      _socket = _api.openAlertChannel(phoneNumber);
+      _socket = _api.openAlertChannel();
     } catch (_) {
       _scheduleReconnect();
       return;

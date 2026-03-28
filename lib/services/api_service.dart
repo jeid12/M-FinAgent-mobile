@@ -145,7 +145,7 @@ class ApiService {
     }
   }
 
-  WebSocketChannel openAlertChannel(String phoneNumber) {
+  WebSocketChannel openAlertChannel() {
     final query = <String, String>{};
     if (_accessToken != null && _accessToken!.isNotEmpty) {
       query['token'] = _accessToken!;
@@ -153,7 +153,7 @@ class ApiService {
 
     final uri = Uri.parse(AppConfig.apiBaseUrl).replace(
       scheme: AppConfig.apiBaseUrl.startsWith('https') ? 'wss' : 'ws',
-      path: '/v1/alerts/ws/$phoneNumber',
+      path: '/v1/alerts/ws/me',
       queryParameters: query.isEmpty ? null : query,
     );
     return WebSocketChannel.connect(uri);
