@@ -37,7 +37,7 @@ flutter run --dart-define=API_BASE_URL=http://localhost:8000
 
 ```bash
 cd M-FinAgent-backend
-/Users/mac/Documents/projects/gdg/bhk/.venv/bin/python -m uvicorn main:app --reload --port 8000
+/Users/mac/Documents/projects/gdg/bhk/M-FinAgent-backend/.venv/bin/python -m uvicorn main:app --app-dir /Users/mac/Documents/projects/gdg/bhk/M-FinAgent-backend --host 0.0.0.0 --port 8000
 ```
 
 2. Ensure phone and laptop are on the same Wi-Fi.
@@ -47,6 +47,8 @@ cd M-FinAgent-backend
 ```bash
 flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8000
 ```
+
+4. Register/login in the app with phone number + password (minimum 8 chars).
 
 4. Grant SMS permissions on first launch. The app listens for MTN/Airtel messages and ingests supported SMS into backend automatically while the app is open.
 
@@ -65,7 +67,7 @@ flutter test
 ## Backend contract
 
 - Ingest SMS: `POST /v1/transactions/ingest`
-- Transactions feed: `GET /v1/transactions?phone_number=...`
-- Summary: `GET /v1/transactions/summary?phone_number=...&days=7`
-- AI Chat: `POST /v1/chat`
-- Realtime alerts: `WS /v1/alerts/ws/{phone_number}`
+- Transactions feed: `GET /v1/transactions?limit=50`
+- Summary: `GET /v1/transactions/summary?days=7`
+- AI Chat: `POST /v1/chat` with `{ "question": "..." }`
+- Realtime alerts: `WS /v1/alerts/ws/me`

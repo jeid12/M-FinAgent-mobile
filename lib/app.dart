@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'state/app_state.dart';
 import 'ui/screens/auth_screen.dart';
@@ -63,42 +64,129 @@ class _FinAgentAppState extends State<FinAgentApp> {
       debugShowCheckedModeBanner: false,
       title: 'M-FinAgent',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF003049)),
-        scaffoldBackgroundColor: const Color(0xFFF7F9FC),
-        fontFamily: 'monospace',
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF033B5A),
+          secondary: Color(0xFFF77F00),
+          surface: Color(0xFFF2F6F9),
+        ),
+        textTheme: GoogleFonts.soraTextTheme(),
+        scaffoldBackgroundColor: const Color(0xFFF2F6F9),
         useMaterial3: true,
       ),
       home: Scaffold(
         appBar: AppBar(
-          title: const Text(
-            'M-FinAgent',
-            style: TextStyle(fontWeight: FontWeight.w800),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          titleSpacing: 12,
+          title: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF033B5A), Color(0xFF0A5D7F)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Image.asset('assets/logo.png'),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'M-FinAgent',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ],
           ),
         ),
-        body: isAuthenticated
-            ? Column(
-                children: [
-                  _StatusBanner(state: _state),
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 280),
-                      child: pages[_index],
+        extendBodyBehindAppBar: false,
+        body: Stack(
+          children: [
+            const _AtmosphereBackground(),
+            SafeArea(
+              child: isAuthenticated
+                  ? Column(
+                      children: [
+                        _StatusBanner(state: _state),
+                        Expanded(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 320),
+                            child: pages[_index],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              )
-            : AuthScreen(state: _state),
+                  : AuthScreen(state: _state),
+            ),
+          ],
+        ),
         bottomNavigationBar: isAuthenticated
-            ? NavigationBar(
-                selectedIndex: _index,
-                onDestinationSelected: (value) => setState(() => _index = value),
-                destinations: const [
-                  NavigationDestination(icon: Icon(Icons.receipt_long), label: 'Feed'),
-                  NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
-                  NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
-                ],
+            ? Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: NavigationBar(
+                    backgroundColor: Colors.white.withValues(alpha: 0.88),
+                    selectedIndex: _index,
+                    indicatorColor: const Color(0x332A9D8F),
+                    onDestinationSelected: (value) => setState(() => _index = value),
+                    destinations: const [
+                      NavigationDestination(icon: Icon(Icons.receipt_long), label: 'Feed'),
+                      NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
+                      NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
+                    ],
+                  ),
+                ),
               )
             : null,
+      ),
+    );
+  }
+}
+
+class _AtmosphereBackground extends StatelessWidget {
+  const _AtmosphereBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF8FCFF), Color(0xFFEAF2F8)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -80,
+            right: -60,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0x1A0A5D7F),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -100,
+            left: -50,
+            child: Container(
+              width: 260,
+              height: 260,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0x14F77F00),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -114,21 +202,39 @@ class _StatusBanner extends StatelessWidget {
     final backendOnline = state.backendOnline;
     final smsLabel = state.smsPermissionLabel;
 
-    final color = backendOnline ? const Color(0xFFDDF5E7) : const Color(0xFFFDE7E7);
-    final textColor = backendOnline ? const Color(0xFF0B6B36) : const Color(0xFF8A1C1C);
+    final color = backendOnline ? const Color(0xFFE3F6EC) : const Color(0xFFFCE8E8);
+    final textColor = backendOnline ? const Color(0xFF10643A) : const Color(0xFF8D1E1E);
     final backendLabel = backendOnline ? 'Online' : 'Offline';
 
-    return Container(
-      width: double.infinity,
-      color: color,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      child: Text(
-        'Backend: $backendLabel   |   SMS Permission: $smsLabel',
-        style: TextStyle(
-          color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: textColor.withValues(alpha: 0.28)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              backendOnline ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+              color: textColor,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Backend: $backendLabel  |  SMS: $smsLabel',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
