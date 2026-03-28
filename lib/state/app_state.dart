@@ -189,10 +189,19 @@ class AppState extends ChangeNotifier {
         ChatMessage(text: answer, fromUser: false),
       ];
       backendOnline = true;
-    } catch (_) {
+    } catch (e) {
+      final reason = e
+          .toString()
+          .replaceFirst('Exception: ', '')
+          .trim();
       chatMessages = [
         ...chatMessages,
-        ChatMessage(text: 'Coach is temporarily unavailable. Try again.', fromUser: false),
+        ChatMessage(
+          text: reason.isEmpty
+              ? 'Coach is temporarily unavailable. Try again.'
+              : 'Coach is temporarily unavailable: $reason',
+          fromUser: false,
+        ),
       ];
       backendOnline = false;
     }

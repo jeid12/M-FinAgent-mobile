@@ -115,7 +115,23 @@ class ApiService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to ask coach');
+      final rawBody = response.body.trim();
+      String detail = 'Request failed';
+
+      if (rawBody.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawBody);
+          if (decoded is Map<String, dynamic>) {
+            detail = (decoded['detail'] ?? decoded['message'] ?? decoded['error'] ?? rawBody).toString();
+          } else {
+            detail = rawBody;
+          }
+        } catch (_) {
+          detail = rawBody;
+        }
+      }
+
+      throw Exception('Coach request failed (${response.statusCode}): $detail');
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;

@@ -85,12 +85,16 @@ class _AuthScreenState extends State<AuthScreen> {
                           child: Image.asset('assets/logo.png'),
                         ),
                         const SizedBox(width: 10),
-                        const Text(
-                          'M-FinAgent Access',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
+                        const Expanded(
+                          child: Text(
+                            'M-FinAgent Access',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ],
@@ -144,9 +148,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ),
                     ),
+                  ],
                   ),
-                ),
-              ),
+                  ),
               if (widget.state.authError != null) ...[
                 const SizedBox(height: 10),
                 Text(

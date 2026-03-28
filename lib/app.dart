@@ -118,7 +118,7 @@ class _FinAgentAppState extends State<FinAgentApp> {
                           ),
                         ),
                       ],
-                    ),
+                    )
                   : AuthScreen(state: _state),
             ),
           ],
