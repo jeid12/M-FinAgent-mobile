@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -64,6 +65,27 @@ class ApiService {
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     return data['answer'] as String;
+  }
+
+  Future<void> ingestSms({
+    required String provider,
+    required String phoneNumber,
+    required String smsText,
+  }) async {
+    final response = await _client.post(
+      _uri('transactions/ingest'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({
+        'provider': provider,
+        'phone_number': phoneNumber,
+        'sms_text': smsText,
+        'occurred_at': DateTime.now().toUtc().toIso8601String(),
+      }),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw Exception('Failed to ingest SMS transaction');
+    }
   }
 
   WebSocketChannel openAlertChannel(String phoneNumber) {

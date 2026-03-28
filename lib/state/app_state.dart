@@ -9,11 +9,15 @@ import '../models/chat_message.dart';
 import '../models/summary.dart';
 import '../models/transaction.dart';
 import '../services/api_service.dart';
+import '../services/sms_listener_service.dart';
 
 class AppState extends ChangeNotifier {
-  AppState({ApiService? apiService}) : _api = apiService ?? ApiService();
+  AppState({ApiService? apiService, SmsListenerService? smsListener})
+      : _api = apiService ?? ApiService(),
+        _smsListener = smsListener ?? SmsListenerService();
 
   final ApiService _api;
+  final SmsListenerService _smsListener;
 
   bool loading = true;
   String? error;
@@ -28,7 +32,25 @@ class AppState extends ChangeNotifier {
 
   Future<void> initialize() async {
     await refreshData();
+    await _startSmsIngestion();
     _connectAlerts();
+  }
+
+  Future<void> _startSmsIngestion() async {
+    await _smsListener.start(
+      onSupportedSms: (provider, smsText) async {
+        try {
+          await _api.ingestSms(
+            provider: provider,
+            phoneNumber: AppConfig.phoneNumber,
+            smsText: smsText,
+          );
+          await refreshData();
+        } catch (_) {
+          // Keep the app responsive when backend is temporarily unavailable.
+        }
+      },
+    );
   }
 
   Future<void> refreshData() async {
@@ -159,6 +181,7 @@ class AppState extends ChangeNotifier {
     _isDisposed = true;
     _reconnectTimer?.cancel();
     _socket?.sink.close();
+    unawaited(_smsListener.dispose());
     super.dispose();
   }
 }
