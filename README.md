@@ -2,10 +2,31 @@
 
 Flutter app (Android, iOS, macOS) for transaction feed, realtime alerts, and AI chat coaching.
 
+## Problem Statement
+
+Despite the widespread use of MTN MoMo and Airtel Money in Rwanda, users lack clear visibility into daily cash flow because financial history is scattered across isolated SMS notifications. This creates invisible spending, weak budgeting discipline, and missed savings goals.
+
+## Proposed Solution
+
+M-FinAgent provides a proactive AI financial co-pilot experience.
+
+- Capture mobile money SMS notifications from MTN/Airtel.
+- Convert raw SMS into structured transactions through FastAPI.
+- Store and analyze transaction behavior in PostgreSQL.
+- Trigger real-time overspending alerts and actionable coaching.
+- Enable conversational planning in chat for what-if scenarios.
+
+## Technical Architecture Flow
+
+1. Capture: Flutter listens to MTN/Airtel SMS events.
+2. Process and Store: FastAPI extracts amount and merchant, classifies transaction, and stores data.
+3. Analyze and Alert: AI agent evaluates new transactions versus history and sends warnings/tips.
+4. Converse: User opens Chat to ask personalized spending and affordability questions.
+
 ## Run
 
 ```bash
-cd M-FinAgent-mobile
+cd m_finagent_mobile
 flutter pub get
 flutter run --dart-define=API_BASE_URL=http://localhost:8000
 ```
