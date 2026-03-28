@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 
 import 'state/app_state.dart';
+import 'ui/screens/auth_screen.dart';
 import 'ui/screens/chat_screen.dart';
 import 'ui/screens/feed_screen.dart';
 import 'ui/screens/profile_screen.dart';
 
 class FinAgentApp extends StatefulWidget {
-  const FinAgentApp({super.key, this.appState});
+  const FinAgentApp({super.key, this.appState, this.autoInitialize = true});
 
   final AppState? appState;
+  final bool autoInitialize;
 
   @override
   State<FinAgentApp> createState() => _FinAgentAppState();
@@ -22,7 +24,9 @@ class _FinAgentAppState extends State<FinAgentApp> {
   void initState() {
     super.initState();
     _state = widget.appState ?? AppState();
-    _state.initialize();
+    if (widget.autoInitialize) {
+      _state.initialize();
+    }
     _state.addListener(_onStateChanged);
   }
 
@@ -47,8 +51,13 @@ class _FinAgentAppState extends State<FinAgentApp> {
     final pages = [
       FeedScreen(state: _state),
       ChatScreen(state: _state),
-      const ProfileScreen(),
+      ProfileScreen(
+        userLabel: _state.activeIdentityLabel,
+        onLogout: _state.logout,
+      ),
     ];
+
+    final isAuthenticated = _state.isAuthenticated;
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -66,26 +75,30 @@ class _FinAgentAppState extends State<FinAgentApp> {
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
         ),
-        body: Column(
-          children: [
-            _StatusBanner(state: _state),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 280),
-                child: pages[_index],
-              ),
-            ),
-          ],
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: (value) => setState(() => _index = value),
-          destinations: const [
-            NavigationDestination(icon: Icon(Icons.receipt_long), label: 'Feed'),
-            NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
-            NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
-          ],
-        ),
+        body: isAuthenticated
+            ? Column(
+                children: [
+                  _StatusBanner(state: _state),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 280),
+                      child: pages[_index],
+                    ),
+                  ),
+                ],
+              )
+            : AuthScreen(state: _state),
+        bottomNavigationBar: isAuthenticated
+            ? NavigationBar(
+                selectedIndex: _index,
+                onDestinationSelected: (value) => setState(() => _index = value),
+                destinations: const [
+                  NavigationDestination(icon: Icon(Icons.receipt_long), label: 'Feed'),
+                  NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
+                  NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
+                ],
+              )
+            : null,
       ),
     );
   }

@@ -14,6 +14,8 @@ class ApiService {
   final http.Client _client;
   String? _accessToken;
 
+  bool get hasAccessToken => _accessToken != null && _accessToken!.isNotEmpty;
+
   Uri _uri(String path, [Map<String, String>? queryParams]) {
     final base = Uri.parse(AppConfig.apiBaseUrl);
     return base.replace(
@@ -22,22 +24,46 @@ class ApiService {
     );
   }
 
-  Future<void> authenticate(String phoneNumber) async {
+  Future<void> registerWithPhone(String phoneNumber) async {
+    await _authenticate(
+      endpoint: 'auth/register',
+      payload: {'phone_number': phoneNumber},
+      failureMessage: 'Failed to register mobile app user',
+    );
+  }
+
+  Future<void> loginWithPhone(String phoneNumber) async {
+    await _authenticate(
+      endpoint: 'auth/login',
+      payload: {'phone_number': phoneNumber},
+      failureMessage: 'Failed to login mobile app user',
+    );
+  }
+
+  Future<void> _authenticate({
+    required String endpoint,
+    required Map<String, dynamic> payload,
+    required String failureMessage,
+  }) async {
     final response = await _client.post(
-      _uri('auth/register'),
+      _uri(endpoint),
       headers: const {'content-type': 'application/json'},
-      body: jsonEncode({'phone_number': phoneNumber}),
+      body: jsonEncode(payload),
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to authenticate mobile app');
+      throw Exception(failureMessage);
     }
 
-    final payload = jsonDecode(response.body) as Map<String, dynamic>;
-    _accessToken = payload['access_token']?.toString();
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    _accessToken = decoded['access_token']?.toString();
     if (_accessToken == null || _accessToken!.isEmpty) {
       throw Exception('Backend returned empty access token');
     }
+  }
+
+  void clearAuthToken() {
+    _accessToken = null;
   }
 
   Map<String, String> _headers({bool json = false}) {

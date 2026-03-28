@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-import '../core/config.dart';
 import '../models/chat_message.dart';
 import '../models/summary.dart';
 import '../models/transaction.dart';
@@ -19,6 +18,11 @@ class AppState extends ChangeNotifier {
   final ApiService _api;
   final SmsListenerService _smsListener;
 
+  bool initialized = false;
+  bool authLoading = false;
+  bool isAuthenticated = false;
+  String? activePhoneNumber;
+  String? authError;
   bool loading = true;
   bool backendOnline = false;
   SmsPermissionState smsPermissionState = SmsPermissionState.unsupported;
@@ -38,26 +42,88 @@ class AppState extends ChangeNotifier {
         SmsPermissionState.unsupported => 'Unavailable',
       };
 
-  Future<void> initialize() async {
-    try {
-      await _api.authenticate(AppConfig.phoneNumber);
-      backendOnline = true;
-    } catch (_) {
-      backendOnline = false;
-    }
+  String get activeIdentityLabel => activePhoneNumber ?? 'Guest';
 
+  Future<void> initialize() async {
+    initialized = true;
+    loading = false;
+    notifyListeners();
+  }
+
+  Future<void> register(String phoneNumber) async {
+    await _startAuthFlow(
+      action: () => _api.registerWithPhone(phoneNumber),
+      phoneNumber: phoneNumber,
+    );
+  }
+
+  Future<void> login(String phoneNumber) async {
+    await _startAuthFlow(
+      action: () => _api.loginWithPhone(phoneNumber),
+      phoneNumber: phoneNumber,
+    );
+  }
+
+  Future<void> _startAuthFlow({
+    required Future<void> Function() action,
+    required String phoneNumber,
+  }) async {
+    authLoading = true;
+    authError = null;
+    notifyListeners();
+
+    try {
+      await action();
+      isAuthenticated = true;
+      activePhoneNumber = phoneNumber;
+      backendOnline = true;
+      await _startSession();
+    } catch (e) {
+      authError = e.toString();
+      backendOnline = false;
+    } finally {
+      authLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _startSession() async {
+    chatMessages = [];
+    alerts = [];
     await refreshData();
     await _startSmsIngestion();
     _connectAlerts();
   }
 
+  Future<void> logout() async {
+    isAuthenticated = false;
+    activePhoneNumber = null;
+    authError = null;
+    _api.clearAuthToken();
+    _reconnectTimer?.cancel();
+    _socket?.sink.close();
+    _socket = null;
+
+    summary = SpendingSummary.empty();
+    transactions = [];
+    chatMessages = [];
+    alerts = [];
+    loading = false;
+    notifyListeners();
+  }
+
   Future<void> _startSmsIngestion() async {
     smsPermissionState = await _smsListener.start(
       onSupportedSms: (provider, smsText) async {
+        final phoneNumber = activePhoneNumber;
+        if (phoneNumber == null) {
+          return;
+        }
+
         try {
           await _api.ingestSms(
             provider: provider,
-            phoneNumber: AppConfig.phoneNumber,
+            phoneNumber: phoneNumber,
             smsText: smsText,
           );
           await refreshData();
@@ -70,14 +136,22 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> refreshData() async {
+    final phoneNumber = activePhoneNumber;
+    if (!isAuthenticated || phoneNumber == null) {
+      loading = false;
+      error = null;
+      notifyListeners();
+      return;
+    }
+
     loading = true;
     error = null;
     notifyListeners();
 
     try {
       final result = await Future.wait([
-        _api.fetchSummary(AppConfig.phoneNumber),
-        _api.fetchTransactions(AppConfig.phoneNumber),
+        _api.fetchSummary(phoneNumber),
+        _api.fetchTransactions(phoneNumber),
       ]);
 
       summary = result[0] as SpendingSummary;
@@ -97,6 +171,11 @@ class AppState extends ChangeNotifier {
       return;
     }
 
+    final phoneNumber = activePhoneNumber;
+    if (!isAuthenticated || phoneNumber == null) {
+      return;
+    }
+
     chatMessages = [
       ...chatMessages,
       ChatMessage(text: question, fromUser: true),
@@ -104,7 +183,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final answer = await _api.askCoach(AppConfig.phoneNumber, question);
+      final answer = await _api.askCoach(phoneNumber, question);
       chatMessages = [
         ...chatMessages,
         ChatMessage(text: answer, fromUser: false),
@@ -122,7 +201,8 @@ class AppState extends ChangeNotifier {
   }
 
   void _connectAlerts() {
-    if (_isDisposed) {
+    final phoneNumber = activePhoneNumber;
+    if (_isDisposed || !isAuthenticated || phoneNumber == null || !_api.hasAccessToken) {
       return;
     }
 
@@ -131,7 +211,7 @@ class AppState extends ChangeNotifier {
     _socket = null;
 
     try {
-      _socket = _api.openAlertChannel(AppConfig.phoneNumber);
+      _socket = _api.openAlertChannel(phoneNumber);
     } catch (_) {
       _scheduleReconnect();
       return;

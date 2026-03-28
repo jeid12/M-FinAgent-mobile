@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({
+    super.key,
+    required this.userLabel,
+    required this.onLogout,
+  });
+
+  final String userLabel;
+  final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +25,7 @@ class ProfileScreen extends StatelessWidget {
               end: Alignment.bottomRight,
             ),
           ),
-          child: const Row(
+          child: Row(
             children: [
               CircleAvatar(
                 radius: 28,
@@ -39,7 +46,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '+250788000001',
+                      userLabel,
                       style: TextStyle(color: Colors.black87),
                     ),
                   ],
@@ -61,10 +68,8 @@ class ProfileScreen extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         OutlinedButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Logout action placeholder')),
-            );
+          onPressed: () async {
+            await onLogout();
           },
           icon: const Icon(Icons.logout),
           label: const Text('Logout'),
