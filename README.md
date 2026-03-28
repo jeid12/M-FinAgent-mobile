@@ -28,7 +28,7 @@ M-FinAgent provides a proactive AI financial co-pilot experience.
 ```bash
 cd m_finagent_mobile
 flutter pub get
-flutter run --dart-define=API_BASE_URL=http://localhost:8000
+flutter run --dart-define=API_BASE_URL=http://localhost:8000 --dart-define=ANDROID_EMULATOR=true
 ```
 
 ## Android Real Device Setup
@@ -55,7 +55,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8000
 For Android emulator using local backend, use host `10.0.2.2`:
 
 ```bash
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
+flutter run --dart-define=API_BASE_URL=http://localhost:8000 --dart-define=ANDROID_EMULATOR=true
 ```
 
 ## Test
