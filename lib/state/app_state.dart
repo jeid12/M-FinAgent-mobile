@@ -50,16 +50,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> register(String phoneNumber) async {
+  Future<void> register(String phoneNumber, String password) async {
     await _startAuthFlow(
-      action: () => _api.registerWithPhone(phoneNumber),
+      action: () => _api.registerWithPhone(phoneNumber, password),
       phoneNumber: phoneNumber,
     );
   }
 
-  Future<void> login(String phoneNumber) async {
+  Future<void> login(String phoneNumber, String password) async {
     await _startAuthFlow(
-      action: () => _api.loginWithPhone(phoneNumber),
+      action: () => _api.loginWithPhone(phoneNumber, password),
       phoneNumber: phoneNumber,
     );
   }
@@ -150,8 +150,8 @@ class AppState extends ChangeNotifier {
 
     try {
       final result = await Future.wait([
-        _api.fetchSummary(phoneNumber),
-        _api.fetchTransactions(phoneNumber),
+        _api.fetchSummary(),
+        _api.fetchTransactions(),
       ]);
 
       summary = result[0] as SpendingSummary;
@@ -183,7 +183,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final answer = await _api.askCoach(phoneNumber, question);
+      final answer = await _api.askCoach(question);
       chatMessages = [
         ...chatMessages,
         ChatMessage(text: answer, fromUser: false),

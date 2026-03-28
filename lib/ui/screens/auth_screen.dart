@@ -13,27 +13,31 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _phoneController = TextEditingController(text: '+250');
+  final TextEditingController _passwordController = TextEditingController();
 
   @override
   void dispose() {
     _phoneController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
     final phone = _phoneController.text.trim();
-    if (phone.isEmpty) {
+    final password = _passwordController.text;
+    if (phone.isEmpty || password.length < 8) {
       return;
     }
-    await widget.state.register(phone);
+    await widget.state.register(phone, password);
   }
 
   Future<void> _login() async {
     final phone = _phoneController.text.trim();
-    if (phone.isEmpty) {
+    final password = _passwordController.text;
+    if (phone.isEmpty || password.length < 8) {
       return;
     }
-    await widget.state.login(phone);
+    await widget.state.login(phone, password);
   }
 
   @override
@@ -84,6 +88,20 @@ class _AuthScreenState extends State<AuthScreen> {
                 decoration: InputDecoration(
                   labelText: 'Phone Number',
                   hintText: '+250788000001',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  hintText: 'At least 8 characters',
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(

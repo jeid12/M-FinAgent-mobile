@@ -24,18 +24,18 @@ class ApiService {
     );
   }
 
-  Future<void> registerWithPhone(String phoneNumber) async {
+  Future<void> registerWithPhone(String phoneNumber, String password) async {
     await _authenticate(
       endpoint: 'auth/register',
-      payload: {'phone_number': phoneNumber},
+      payload: {'phone_number': phoneNumber, 'password': password},
       failureMessage: 'Failed to register mobile app user',
     );
   }
 
-  Future<void> loginWithPhone(String phoneNumber) async {
+  Future<void> loginWithPhone(String phoneNumber, String password) async {
     await _authenticate(
       endpoint: 'auth/login',
-      payload: {'phone_number': phoneNumber},
+      payload: {'phone_number': phoneNumber, 'password': password},
       failureMessage: 'Failed to login mobile app user',
     );
   }
@@ -78,9 +78,8 @@ class ApiService {
     return headers;
   }
 
-  Future<List<TransactionItem>> fetchTransactions(String phoneNumber) async {
+  Future<List<TransactionItem>> fetchTransactions() async {
     final response = await _client.get(_uri('transactions', {
-      'phone_number': phoneNumber,
       'limit': '50',
     }), headers: _headers());
 
@@ -94,9 +93,8 @@ class ApiService {
         .toList();
   }
 
-  Future<SpendingSummary> fetchSummary(String phoneNumber) async {
+  Future<SpendingSummary> fetchSummary() async {
     final response = await _client.get(_uri('transactions/summary', {
-      'phone_number': phoneNumber,
       'days': '7',
     }), headers: _headers());
 
@@ -109,11 +107,11 @@ class ApiService {
     );
   }
 
-  Future<String> askCoach(String phoneNumber, String question) async {
+  Future<String> askCoach(String question) async {
     final response = await _client.post(
       _uri('chat'),
       headers: _headers(json: true),
-      body: jsonEncode({'phone_number': phoneNumber, 'question': question}),
+      body: jsonEncode({'question': question}),
     );
 
     if (response.statusCode != 200) {
