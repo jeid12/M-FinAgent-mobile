@@ -66,9 +66,16 @@ class _FinAgentAppState extends State<FinAgentApp> {
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
         ),
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 280),
-          child: pages[_index],
+        body: Column(
+          children: [
+            _StatusBanner(state: _state),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                child: pages[_index],
+              ),
+            ),
+          ],
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _index,
@@ -78,6 +85,37 @@ class _FinAgentAppState extends State<FinAgentApp> {
             NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
             NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusBanner extends StatelessWidget {
+  const _StatusBanner({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final backendOnline = state.backendOnline;
+    final smsLabel = state.smsPermissionLabel;
+
+    final color = backendOnline ? const Color(0xFFDDF5E7) : const Color(0xFFFDE7E7);
+    final textColor = backendOnline ? const Color(0xFF0B6B36) : const Color(0xFF8A1C1C);
+    final backendLabel = backendOnline ? 'Online' : 'Offline';
+
+    return Container(
+      width: double.infinity,
+      color: color,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      child: Text(
+        'Backend: $backendLabel   |   SMS Permission: $smsLabel',
+        style: TextStyle(
+          color: textColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
         ),
       ),
     );

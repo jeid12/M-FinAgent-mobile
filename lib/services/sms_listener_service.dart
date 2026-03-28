@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+enum SmsPermissionState { unsupported, denied, granted }
+
 class SmsListenerService {
   SmsListenerService();
 
@@ -13,16 +15,20 @@ class SmsListenerService {
   bool _started = false;
   StreamSubscription<dynamic>? _subscription;
 
-  Future<void> start({
+  Future<SmsPermissionState> start({
     required Future<void> Function(String provider, String smsText) onSupportedSms,
   }) async {
-    if (_started || kIsWeb || !Platform.isAndroid) {
-      return;
+    if (kIsWeb || !Platform.isAndroid) {
+      return SmsPermissionState.unsupported;
+    }
+
+    if (_started) {
+      return SmsPermissionState.granted;
     }
 
     final granted = await _methodChannel.invokeMethod<bool>('requestPermissions');
     if (granted != true) {
-      return;
+      return SmsPermissionState.denied;
     }
 
     _subscription = _eventChannel.receiveBroadcastStream().listen((event) {
@@ -33,14 +39,15 @@ class SmsListenerService {
       final body = (event['body'] ?? '').toString();
       final address = (event['address'] ?? '').toString();
       final provider = _detectProvider(address, body);
-        if (provider == null) {
-          return;
-        }
+      if (provider == null) {
+        return;
+      }
 
-        unawaited(onSupportedSms(provider, body));
-      }, onError: (_) {});
+      unawaited(onSupportedSms(provider, body));
+    }, onError: (_) {});
 
     _started = true;
+    return SmsPermissionState.granted;
   }
 
   String? _detectProvider(String? address, String body) {

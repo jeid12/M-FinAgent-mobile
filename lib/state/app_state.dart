@@ -20,6 +20,8 @@ class AppState extends ChangeNotifier {
   final SmsListenerService _smsListener;
 
   bool loading = true;
+  bool backendOnline = false;
+  SmsPermissionState smsPermissionState = SmsPermissionState.unsupported;
   String? error;
   SpendingSummary summary = SpendingSummary.empty();
   List<TransactionItem> transactions = [];
@@ -30,14 +32,27 @@ class AppState extends ChangeNotifier {
   int _reconnectAttempts = 0;
   bool _isDisposed = false;
 
+  String get smsPermissionLabel => switch (smsPermissionState) {
+        SmsPermissionState.granted => 'Granted',
+        SmsPermissionState.denied => 'Denied',
+        SmsPermissionState.unsupported => 'Unavailable',
+      };
+
   Future<void> initialize() async {
+    try {
+      await _api.authenticate(AppConfig.phoneNumber);
+      backendOnline = true;
+    } catch (_) {
+      backendOnline = false;
+    }
+
     await refreshData();
     await _startSmsIngestion();
     _connectAlerts();
   }
 
   Future<void> _startSmsIngestion() async {
-    await _smsListener.start(
+    smsPermissionState = await _smsListener.start(
       onSupportedSms: (provider, smsText) async {
         try {
           await _api.ingestSms(
@@ -51,6 +66,7 @@ class AppState extends ChangeNotifier {
         }
       },
     );
+    notifyListeners();
   }
 
   Future<void> refreshData() async {
@@ -66,8 +82,10 @@ class AppState extends ChangeNotifier {
 
       summary = result[0] as SpendingSummary;
       transactions = result[1] as List<TransactionItem>;
+      backendOnline = true;
     } catch (e) {
       error = e.toString();
+      backendOnline = false;
     }
 
     loading = false;
@@ -91,11 +109,13 @@ class AppState extends ChangeNotifier {
         ...chatMessages,
         ChatMessage(text: answer, fromUser: false),
       ];
+      backendOnline = true;
     } catch (_) {
       chatMessages = [
         ...chatMessages,
         ChatMessage(text: 'Coach is temporarily unavailable. Try again.', fromUser: false),
       ];
+      backendOnline = false;
     }
 
     notifyListeners();
@@ -124,11 +144,13 @@ class AppState extends ChangeNotifier {
           return;
         }
         _reconnectAttempts = 0;
+        backendOnline = true;
         _attachAlertStream();
       }).catchError((_) {
         if (_isDisposed) {
           return;
         }
+        backendOnline = false;
         alerts = ['Realtime channel unavailable.', ...alerts].take(8).toList();
         notifyListeners();
         _scheduleReconnect();
@@ -146,11 +168,13 @@ class AppState extends ChangeNotifier {
         final payload = jsonDecode(event as String) as Map<String, dynamic>;
         final message = payload['message']?.toString() ?? 'New spending alert.';
         alerts = [message, ...alerts].take(8).toList();
+        backendOnline = true;
       } catch (_) {
         alerts = ['Realtime alert received.', ...alerts].take(8).toList();
       }
       notifyListeners();
     }, onError: (_) {
+      backendOnline = false;
       alerts = ['Realtime channel disconnected.', ...alerts].take(8).toList();
       notifyListeners();
       _scheduleReconnect();
@@ -158,6 +182,7 @@ class AppState extends ChangeNotifier {
       if (_isDisposed) {
         return;
       }
+      backendOnline = false;
       alerts = ['Realtime channel closed. Reconnecting...', ...alerts].take(8).toList();
       notifyListeners();
       _scheduleReconnect();

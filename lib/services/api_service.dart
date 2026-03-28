@@ -12,6 +12,7 @@ class ApiService {
   ApiService({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
+  String? _accessToken;
 
   Uri _uri(String path, [Map<String, String>? queryParams]) {
     final base = Uri.parse(AppConfig.apiBaseUrl);
@@ -21,11 +22,41 @@ class ApiService {
     );
   }
 
+  Future<void> authenticate(String phoneNumber) async {
+    final response = await _client.post(
+      _uri('auth/register'),
+      headers: const {'content-type': 'application/json'},
+      body: jsonEncode({'phone_number': phoneNumber}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to authenticate mobile app');
+    }
+
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    _accessToken = payload['access_token']?.toString();
+    if (_accessToken == null || _accessToken!.isEmpty) {
+      throw Exception('Backend returned empty access token');
+    }
+  }
+
+  Map<String, String> _headers({bool json = false}) {
+    final headers = <String, String>{};
+    if (json) {
+      headers['content-type'] = 'application/json';
+    }
+    final token = _accessToken;
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
   Future<List<TransactionItem>> fetchTransactions(String phoneNumber) async {
     final response = await _client.get(_uri('transactions', {
       'phone_number': phoneNumber,
       'limit': '50',
-    }));
+    }), headers: _headers());
 
     if (response.statusCode != 200) {
       throw Exception('Failed to load transactions');
@@ -41,7 +72,7 @@ class ApiService {
     final response = await _client.get(_uri('transactions/summary', {
       'phone_number': phoneNumber,
       'days': '7',
-    }));
+    }), headers: _headers());
 
     if (response.statusCode != 200) {
       throw Exception('Failed to load summary');
@@ -55,7 +86,7 @@ class ApiService {
   Future<String> askCoach(String phoneNumber, String question) async {
     final response = await _client.post(
       _uri('chat'),
-      headers: {'content-type': 'application/json'},
+      headers: _headers(json: true),
       body: jsonEncode({'phone_number': phoneNumber, 'question': question}),
     );
 
@@ -74,7 +105,7 @@ class ApiService {
   }) async {
     final response = await _client.post(
       _uri('transactions/ingest'),
-      headers: {'content-type': 'application/json'},
+      headers: _headers(json: true),
       body: jsonEncode({
         'provider': provider,
         'phone_number': phoneNumber,
@@ -89,9 +120,15 @@ class ApiService {
   }
 
   WebSocketChannel openAlertChannel(String phoneNumber) {
+    final query = <String, String>{};
+    if (_accessToken != null && _accessToken!.isNotEmpty) {
+      query['token'] = _accessToken!;
+    }
+
     final uri = Uri.parse(AppConfig.apiBaseUrl).replace(
       scheme: AppConfig.apiBaseUrl.startsWith('https') ? 'wss' : 'ws',
       path: '/v1/alerts/ws/$phoneNumber',
+      queryParameters: query.isEmpty ? null : query,
     );
     return WebSocketChannel.connect(uri);
   }
