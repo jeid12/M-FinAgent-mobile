@@ -53,59 +53,97 @@ class _AuthScreenState extends State<AuthScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF003049), Color(0xFF005A7A)],
+                    colors: [Color(0xFF032A43), Color(0xFF0A5D7F), Color(0xFF157A8C)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x33053D61),
+                      blurRadius: 22,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
                 ),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'M-FinAgent Access',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Image.asset('assets/logo.png'),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'M-FinAgent Access',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 8),
-                    Text(
+                    const SizedBox(height: 10),
+                    const Text(
                       'Register once, then log in to see your transaction feed and coaching.',
                       style: TextStyle(color: Colors.white70),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
-              TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: 'Phone Number',
-                  hintText: '+250788000001',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFD4E2EC)),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  hintText: 'At least 8 characters',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.phone_android_rounded),
+                        labelText: 'Phone Number',
+                        hintText: '+250788000001',
+                        filled: true,
+                        fillColor: const Color(0xFFF4F8FB),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        labelText: 'Password',
+                        hintText: 'At least 8 characters',
+                        filled: true,
+                        fillColor: const Color(0xFFF4F8FB),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -118,6 +156,11 @@ class _AuthScreenState extends State<AuthScreen> {
               ],
               const SizedBox(height: 14),
               FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF0A5D7F),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
                 onPressed: busy ? null : _register,
                 child: busy
                     ? const SizedBox(
@@ -129,6 +172,12 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 8),
               OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF0A5D7F)),
+                  foregroundColor: const Color(0xFF0A5D7F),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
                 onPressed: busy ? null : _login,
                 child: const Text('Login'),
               ),

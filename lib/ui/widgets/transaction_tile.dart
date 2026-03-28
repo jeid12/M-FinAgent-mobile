@@ -20,6 +20,12 @@ class TransactionTile extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         color: outgoing ? const Color(0xFFFFF1E8) : const Color(0xFFE9FFF1),
+        border: Border.all(
+          color: outgoing ? const Color(0xFFFFD6BF) : const Color(0xFFC9F0D8),
+        ),
+        boxShadow: const [
+          BoxShadow(color: Color(0x12000000), blurRadius: 8, offset: Offset(0, 3)),
+        ],
       ),
       child: Row(
         children: [
@@ -33,7 +39,7 @@ class TransactionTile extends StatelessWidget {
             child: Icon(
               outgoing ? Icons.call_made : Icons.call_received,
               color: Colors.white,
-              size: 18,
+              size: 19,
             ),
           ),
           const SizedBox(width: 10),
