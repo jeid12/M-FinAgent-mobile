@@ -186,9 +186,46 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
 
+    await _ingestCapturedQueue();
+
     if (smsPermissionState == SmsPermissionState.granted) {
       unawaited(_ingestHistoricalSms());
     }
+  }
+
+  Future<void> _ingestCapturedQueue() async {
+    final phoneNumber = activePhoneNumber;
+    if (phoneNumber == null) return;
+
+    final queued = await _smsListener.fetchCapturedSmsQueue();
+    if (queued.isEmpty) return;
+
+    var failed = 0;
+    for (final event in queued) {
+      try {
+        await _api.ingestSms(
+          provider: event.provider,
+          phoneNumber: phoneNumber,
+          smsText: event.body,
+          occurredAt: event.occurredAt,
+        );
+        lastSmsSyncedAt = DateTime.now();
+      } catch (_) {
+        failed++;
+      }
+    }
+
+    if (failed == 0) {
+      await _smsListener.clearCapturedSmsQueue();
+      smsSyncIssue = null;
+      alerts = ['Offline SMS synced: ${queued.length} item(s).', ...alerts].take(8).toList();
+    } else {
+      smsSyncIssue = 'Offline SMS sync has $failed failed items.';
+      alerts = ['Offline SMS sync: $failed failed items.', ...alerts].take(8).toList();
+    }
+
+    notifyListeners();
+    await refreshData();
   }
 
   Future<void> _ingestHistoricalSms() async {

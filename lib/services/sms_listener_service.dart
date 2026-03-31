@@ -132,6 +132,41 @@ class SmsListenerService {
     }
   }
 
+  Future<List<SmsEvent>> fetchCapturedSmsQueue() async {
+    if (kIsWeb || !Platform.isAndroid) return const [];
+
+    try {
+      final result = await _methodChannel.invokeMethod<List<dynamic>>('fetchCapturedSmsQueue');
+      if (result == null) return const [];
+
+      final events = <SmsEvent>[];
+      for (final item in result) {
+        if (item is! Map) continue;
+        final body = (item['body'] ?? '').toString();
+        final address = (item['address'] ?? '').toString();
+        final timestampMs = item['timestamp'] as int?;
+        final occurredAt = timestampMs != null
+            ? DateTime.fromMillisecondsSinceEpoch(timestampMs, isUtc: true)
+            : DateTime.now().toUtc();
+
+        final provider = _detectProvider(address, body);
+        if (provider == null) continue;
+
+        events.add(SmsEvent(provider: provider, body: body, occurredAt: occurredAt));
+      }
+      return events;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> clearCapturedSmsQueue() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    try {
+      await _methodChannel.invokeMethod<bool>('clearCapturedSmsQueue');
+    } catch (_) {}
+  }
+
   // -------------------------------------------------------------------------
   // Provider detection — now covers MTN, Airtel, MoCash, banks, utilities
   // -------------------------------------------------------------------------

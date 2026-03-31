@@ -14,11 +14,14 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import org.json.JSONArray
 
 class MainActivity : FlutterActivity() {
     private val methodChannelName = "m_finagent_mobile/sms_method"
     private val eventChannelName  = "m_finagent_mobile/sms_events"
     private val permissionRequestCode = 2026
+    private val smsPrefsName = "m_finagent_mobile_sms"
+    private val smsQueueKey = "captured_sms_queue"
 
     private var pendingPermissionResult: MethodChannel.Result? = null
     private var smsReceiver: BroadcastReceiver? = null
@@ -35,6 +38,8 @@ class MainActivity : FlutterActivity() {
                         val maxMessages = call.argument<Int>("maxMessages") ?: 200
                         fetchHistoricalSms(maxMessages, result)
                     }
+                    "fetchCapturedSmsQueue" -> fetchCapturedSmsQueue(result)
+                    "clearCapturedSmsQueue" -> clearCapturedSmsQueue(result)
                     else -> result.notImplemented()
                 }
             }
@@ -168,6 +173,37 @@ class MainActivity : FlutterActivity() {
         }
 
         result.success(messages)
+    }
+
+    private fun fetchCapturedSmsQueue(result: MethodChannel.Result) {
+        val prefs = getSharedPreferences(smsPrefsName, Context.MODE_PRIVATE)
+        val raw = prefs.getString(smsQueueKey, "[]") ?: "[]"
+        val queue = try {
+            JSONArray(raw)
+        } catch (_: Exception) {
+            JSONArray()
+        }
+
+        val messages = mutableListOf<Map<String, Any>>()
+        for (i in 0 until queue.length()) {
+            val item = queue.optJSONObject(i) ?: continue
+            val body = item.optString("body", "")
+            if (body.isBlank()) continue
+            messages.add(
+                mapOf(
+                    "address" to item.optString("address", ""),
+                    "body" to body,
+                    "timestamp" to item.optLong("timestamp", System.currentTimeMillis()),
+                )
+            )
+        }
+        result.success(messages)
+    }
+
+    private fun clearCapturedSmsQueue(result: MethodChannel.Result) {
+        val prefs = getSharedPreferences(smsPrefsName, Context.MODE_PRIVATE)
+        prefs.edit().putString(smsQueueKey, "[]").apply()
+        result.success(true)
     }
 
     // -------------------------------------------------------------------------
