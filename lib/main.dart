@@ -5,7 +5,7 @@ import 'app.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // Avoid runtime font file caching that depends on path_provider plugin channels.
-  GoogleFonts.config.allowRuntimeFetching = false;
+  // Sora is loaded via Google Fonts at runtime.
+  GoogleFonts.config.allowRuntimeFetching = true;
   runApp(const FinAgentApp());
 }
