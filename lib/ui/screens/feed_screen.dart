@@ -127,7 +127,33 @@ class FeedScreen extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
           ),
           const SizedBox(height: 6),
-          if (state.transactions.isEmpty)
+          if (state.historicalSmsLoading)
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F4FD),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF90CAF9)),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Importing SMS history… ${state.historicalSmsProgress}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (state.transactions.isEmpty && !state.historicalSmsLoading)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -136,7 +162,7 @@ class FeedScreen extends StatelessWidget {
                 border: Border.all(color: const Color(0xFFDCE7EF)),
               ),
               child: const Text(
-                'No transactions yet. Incoming MTN/Airtel SMS will appear here.',
+                'No transactions yet. SMS from MTN MoMo, Airtel Money, MoCash, and banks will appear here automatically.',
                 textAlign: TextAlign.center,
               ),
             ),

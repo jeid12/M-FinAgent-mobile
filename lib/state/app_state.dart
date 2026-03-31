@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../models/chat_message.dart';
@@ -31,10 +32,18 @@ class AppState extends ChangeNotifier {
   List<TransactionItem> transactions = [];
   List<ChatMessage> chatMessages = [];
   List<String> alerts = [];
+
+  // Historical SMS ingestion progress
+  bool historicalSmsLoading = false;
+  int historicalSmsTotal = 0;
+  int historicalSmsDone = 0;
+
   WebSocketChannel? _socket;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
   bool _isDisposed = false;
+
+  static const _chatCacheKey = 'chat_messages_cache';
 
   String get smsPermissionLabel => switch (smsPermissionState) {
         SmsPermissionState.granted => 'Granted',
@@ -43,6 +52,9 @@ class AppState extends ChangeNotifier {
       };
 
   String get activeIdentityLabel => activePhoneNumber ?? 'Guest';
+
+  String get historicalSmsProgress =>
+      historicalSmsTotal > 0 ? '$historicalSmsDone / $historicalSmsTotal' : '';
 
   Future<void> initialize() async {
     initialized = true;
@@ -88,8 +100,8 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _startSession() async {
-    chatMessages = [];
     alerts = [];
+    await _loadChatHistory();
     await refreshData();
     await _startSmsIngestion();
     _connectAlerts();
@@ -109,22 +121,25 @@ class AppState extends ChangeNotifier {
     chatMessages = [];
     alerts = [];
     loading = false;
+    historicalSmsLoading = false;
     notifyListeners();
   }
 
+  // ---------------------------------------------------------------------------
+  // SMS ingestion — real-time listener + one-shot historical fetch
+  // ---------------------------------------------------------------------------
+
   Future<void> _startSmsIngestion() async {
     smsPermissionState = await _smsListener.start(
-      onSupportedSms: (provider, smsText) async {
+      onFinancialSms: (SmsEvent event) async {
         final phoneNumber = activePhoneNumber;
-        if (phoneNumber == null) {
-          return;
-        }
-
+        if (phoneNumber == null) return;
         try {
           await _api.ingestSms(
-            provider: provider,
+            provider: event.provider,
             phoneNumber: phoneNumber,
-            smsText: smsText,
+            smsText: event.body,
+            occurredAt: event.occurredAt,
           );
           await refreshData();
         } catch (_) {
@@ -133,7 +148,48 @@ class AppState extends ChangeNotifier {
       },
     );
     notifyListeners();
+
+    if (smsPermissionState == SmsPermissionState.granted) {
+      unawaited(_ingestHistoricalSms());
+    }
   }
+
+  Future<void> _ingestHistoricalSms() async {
+    final phoneNumber = activePhoneNumber;
+    if (phoneNumber == null) return;
+
+    final historical = await _smsListener.fetchHistoricalSms(maxMessages: 300);
+    if (historical.isEmpty) return;
+
+    historicalSmsLoading = true;
+    historicalSmsTotal = historical.length;
+    historicalSmsDone = 0;
+    notifyListeners();
+
+    for (final event in historical) {
+      try {
+        await _api.ingestSms(
+          provider: event.provider,
+          phoneNumber: phoneNumber,
+          smsText: event.body,
+          occurredAt: event.occurredAt,
+        );
+      } catch (_) {
+        // Individual failures are non-fatal — continue processing
+      }
+      historicalSmsDone++;
+      // Notify every 10 items to avoid flooding UI
+      if (historicalSmsDone % 10 == 0) notifyListeners();
+    }
+
+    historicalSmsLoading = false;
+    notifyListeners();
+    await refreshData();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Data refresh
+  // ---------------------------------------------------------------------------
 
   Future<void> refreshData() async {
     final phoneNumber = activePhoneNumber;
@@ -148,33 +204,47 @@ class AppState extends ChangeNotifier {
     error = null;
     notifyListeners();
 
-    try {
-      final result = await Future.wait([
-        _api.fetchSummary(),
-        _api.fetchTransactions(),
-      ]);
+    String? summaryError;
+    String? transactionsError;
 
-      summary = result[0] as SpendingSummary;
-      transactions = result[1] as List<TransactionItem>;
-      backendOnline = true;
+    try {
+      summary = await _api.fetchSummary();
     } catch (e) {
-      error = e.toString();
+      summaryError = e.toString().replaceFirst('Exception: ', '').trim();
+    }
+
+    try {
+      transactions = await _api.fetchTransactions();
+    } catch (e) {
+      transactionsError = e.toString().replaceFirst('Exception: ', '').trim();
+    }
+
+    if (summaryError == null && transactionsError == null) {
+      backendOnline = true;
+    } else {
       backendOnline = false;
+      final parts = <String>[];
+      if (summaryError != null) parts.add(summaryError);
+      if (transactionsError != null) parts.add(transactionsError);
+      error = parts.join(' | ');
+      if (error!.contains('(401)') || error!.toLowerCase().contains('missing bearer token')) {
+        error = '$error. Session expired; please log in again.';
+      }
     }
 
     loading = false;
     notifyListeners();
   }
 
+  // ---------------------------------------------------------------------------
+  // Chat — send message, persist locally and on server
+  // ---------------------------------------------------------------------------
+
   Future<void> sendQuestion(String question) async {
-    if (question.trim().isEmpty) {
-      return;
-    }
+    if (question.trim().isEmpty) return;
 
     final phoneNumber = activePhoneNumber;
-    if (!isAuthenticated || phoneNumber == null) {
-      return;
-    }
+    if (!isAuthenticated || phoneNumber == null) return;
 
     chatMessages = [
       ...chatMessages,
@@ -190,10 +260,7 @@ class AppState extends ChangeNotifier {
       ];
       backendOnline = true;
     } catch (e) {
-      final reason = e
-          .toString()
-          .replaceFirst('Exception: ', '')
-          .trim();
+      final reason = e.toString().replaceFirst('Exception: ', '').trim();
       chatMessages = [
         ...chatMessages,
         ChatMessage(
@@ -206,8 +273,60 @@ class AppState extends ChangeNotifier {
       backendOnline = false;
     }
 
+    await _saveChatHistory();
     notifyListeners();
   }
+
+  // ---------------------------------------------------------------------------
+  // Chat history persistence (SharedPreferences)
+  // ---------------------------------------------------------------------------
+
+  Future<void> _loadChatHistory() async {
+    // First try to restore from server-side history
+    try {
+      final serverMessages = await _api.fetchChatHistory(limit: 50);
+      if (serverMessages.isNotEmpty) {
+        chatMessages = serverMessages;
+        await _saveChatHistory();
+        notifyListeners();
+        return;
+      }
+    } catch (_) {
+      // Fall back to local cache
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_chatCacheKey);
+      if (raw != null) {
+        final list = jsonDecode(raw) as List<dynamic>;
+        chatMessages = list
+            .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
+            .toList();
+        notifyListeners();
+      }
+    } catch (_) {
+      chatMessages = [];
+    }
+  }
+
+  Future<void> _saveChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // Keep last 100 messages locally
+      final toSave = chatMessages.length > 100
+          ? chatMessages.sublist(chatMessages.length - 100)
+          : chatMessages;
+      await prefs.setString(
+        _chatCacheKey,
+        jsonEncode(toSave.map((m) => m.toJson()).toList()),
+      );
+    } catch (_) {}
+  }
+
+  // ---------------------------------------------------------------------------
+  // WebSocket alerts
+  // ---------------------------------------------------------------------------
 
   void _connectAlerts() {
     final phoneNumber = activePhoneNumber;
@@ -226,20 +345,14 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    // In web_socket_channel v3, failed handshakes can surface on `ready`.
     unawaited(
       _socket!.ready.then((_) {
-        if (_isDisposed) {
-          return;
-        }
+        if (_isDisposed) return;
         _reconnectAttempts = 0;
         backendOnline = true;
         _attachAlertStream();
       }).catchError((_) {
-        if (_isDisposed) {
-          return;
-        }
-        backendOnline = false;
+        if (_isDisposed) return;
         alerts = ['Realtime channel unavailable.', ...alerts].take(8).toList();
         notifyListeners();
         _scheduleReconnect();
@@ -248,45 +361,40 @@ class AppState extends ChangeNotifier {
   }
 
   void _attachAlertStream() {
-    if (_socket == null || _isDisposed) {
-      return;
-    }
+    if (_socket == null || _isDisposed) return;
 
-    _socket!.stream.listen((event) {
-      try {
-        final payload = jsonDecode(event as String) as Map<String, dynamic>;
-        final message = payload['message']?.toString() ?? 'New spending alert.';
-        alerts = [message, ...alerts].take(8).toList();
-        backendOnline = true;
-      } catch (_) {
-        alerts = ['Realtime alert received.', ...alerts].take(8).toList();
-      }
-      notifyListeners();
-    }, onError: (_) {
-      backendOnline = false;
-      alerts = ['Realtime channel disconnected.', ...alerts].take(8).toList();
-      notifyListeners();
-      _scheduleReconnect();
-    }, onDone: () {
-      if (_isDisposed) {
-        return;
-      }
-      backendOnline = false;
-      alerts = ['Realtime channel closed. Reconnecting...', ...alerts].take(8).toList();
-      notifyListeners();
-      _scheduleReconnect();
-    }, cancelOnError: false);
+    _socket!.stream.listen(
+      (event) {
+        try {
+          final payload = jsonDecode(event as String) as Map<String, dynamic>;
+          final message = payload['message']?.toString() ?? 'New spending alert.';
+          alerts = [message, ...alerts].take(8).toList();
+          backendOnline = true;
+        } catch (_) {
+          alerts = ['Realtime alert received.', ...alerts].take(8).toList();
+        }
+        notifyListeners();
+      },
+      onError: (_) {
+        alerts = ['Realtime channel disconnected.', ...alerts].take(8).toList();
+        notifyListeners();
+        _scheduleReconnect();
+      },
+      onDone: () {
+        if (_isDisposed) return;
+        alerts = ['Realtime channel closed. Reconnecting...', ...alerts].take(8).toList();
+        notifyListeners();
+        _scheduleReconnect();
+      },
+      cancelOnError: false,
+    );
   }
 
   void _scheduleReconnect() {
-    if (_isDisposed) {
-      return;
-    }
-
+    if (_isDisposed) return;
     _reconnectTimer?.cancel();
     final delaySeconds = (1 << _reconnectAttempts).clamp(2, 30);
     _reconnectAttempts = (_reconnectAttempts + 1).clamp(0, 12);
-
     _reconnectTimer = Timer(Duration(seconds: delaySeconds), _connectAlerts);
   }
 

@@ -28,6 +28,14 @@ M-FinAgent provides a proactive AI financial co-pilot experience.
 ```bash
 cd m_finagent_mobile
 flutter pub get
+flutter run
+```
+
+Default backend URL is `https://m-finagent-backend.onrender.com`.
+
+If you want to run against a local backend instead:
+
+```bash
 flutter run --dart-define=API_BASE_URL=http://localhost:8000 --dart-define=ANDROID_EMULATOR=true
 ```
 
@@ -57,6 +65,30 @@ For Android emulator using local backend, use host `10.0.2.2`:
 ```bash
 flutter run --dart-define=API_BASE_URL=http://localhost:8000 --dart-define=ANDROID_EMULATOR=true
 ```
+
+## Troubleshooting: Failed host lookup
+
+If you see a SocketException like `Failed host lookup`, the app cannot resolve the backend hostname from the running device.
+
+- Android emulator + local backend:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://localhost:8000 --dart-define=ANDROID_EMULATOR=true
+```
+
+- iOS simulator + local backend:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://localhost:8000
+```
+
+- Physical device + local backend (replace with your laptop LAN IP):
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8000
+```
+
+Also ensure your backend is running with `--host 0.0.0.0 --port 8000` and device/laptop are on the same network when testing local APIs.
 
 ## Test
 

@@ -110,7 +110,6 @@ class _FinAgentAppState extends State<FinAgentApp> {
               child: isAuthenticated
                   ? Column(
                       children: [
-                        _StatusBanner(state: _state),
                         Expanded(
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 320),
@@ -187,55 +186,6 @@ class _AtmosphereBackground extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({required this.state});
-
-  final AppState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final backendOnline = state.backendOnline;
-    final smsLabel = state.smsPermissionLabel;
-
-    final color = backendOnline ? const Color(0xFFE3F6EC) : const Color(0xFFFCE8E8);
-    final textColor = backendOnline ? const Color(0xFF10643A) : const Color(0xFF8D1E1E);
-    final backendLabel = backendOnline ? 'Online' : 'Offline';
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: textColor.withValues(alpha: 0.28)),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              backendOnline ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
-              color: textColor,
-              size: 16,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Backend: $backendLabel  |  SMS: $smsLabel',
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
