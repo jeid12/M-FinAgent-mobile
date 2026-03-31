@@ -244,7 +244,9 @@ class ApiService {
     );
 
     if (response.statusCode >= HttpStatus.badRequest) {
-      throw Exception('Failed to ingest SMS transaction');
+      throw Exception(
+        'Failed to ingest SMS transaction (${response.statusCode}): ${_errorDetail(response)}',
+      );
     }
   }
 

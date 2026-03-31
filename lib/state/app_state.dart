@@ -37,6 +37,9 @@ class AppState extends ChangeNotifier {
   bool historicalSmsLoading = false;
   int historicalSmsTotal = 0;
   int historicalSmsDone = 0;
+  DateTime? lastSmsDetectedAt;
+  DateTime? lastSmsSyncedAt;
+  String? smsSyncIssue;
 
   WebSocketChannel? _socket;
   Timer? _reconnectTimer;
@@ -55,6 +58,25 @@ class AppState extends ChangeNotifier {
 
   String get historicalSmsProgress =>
       historicalSmsTotal > 0 ? '$historicalSmsDone / $historicalSmsTotal' : '';
+
+  String get smsSyncStatus {
+    if (smsPermissionState == SmsPermissionState.denied) {
+      return 'SMS permission denied. Enable SMS permissions in app settings.';
+    }
+    if (smsPermissionState == SmsPermissionState.unsupported) {
+      return 'SMS auto-ingest works on Android devices.';
+    }
+    if (smsSyncIssue != null && smsSyncIssue!.isNotEmpty) {
+      return smsSyncIssue!;
+    }
+    if (lastSmsSyncedAt != null) {
+      return 'Last SMS synced at ${lastSmsSyncedAt!.toLocal()}';
+    }
+    if (lastSmsDetectedAt != null) {
+      return 'SMS detected, syncing...';
+    }
+    return 'Waiting for financial SMS...';
+  }
 
   Future<void> initialize() async {
     initialized = true;
@@ -122,6 +144,9 @@ class AppState extends ChangeNotifier {
     alerts = [];
     loading = false;
     historicalSmsLoading = false;
+    lastSmsDetectedAt = null;
+    lastSmsSyncedAt = null;
+    smsSyncIssue = null;
     notifyListeners();
   }
 
@@ -134,6 +159,9 @@ class AppState extends ChangeNotifier {
       onFinancialSms: (SmsEvent event) async {
         final phoneNumber = activePhoneNumber;
         if (phoneNumber == null) return;
+        lastSmsDetectedAt = DateTime.now();
+        smsSyncIssue = null;
+        notifyListeners();
         try {
           await _api.ingestSms(
             provider: event.provider,
@@ -141,12 +169,21 @@ class AppState extends ChangeNotifier {
             smsText: event.body,
             occurredAt: event.occurredAt,
           );
+          lastSmsSyncedAt = DateTime.now();
+          smsSyncIssue = null;
           await refreshData();
-        } catch (_) {
-          // Keep the app responsive when backend is temporarily unavailable.
+        } catch (e) {
+          final reason = e.toString().replaceFirst('Exception: ', '').trim();
+          smsSyncIssue = reason.isEmpty ? 'Failed to sync incoming SMS.' : reason;
+          alerts = ['SMS sync failed: $smsSyncIssue', ...alerts].take(8).toList();
+          notifyListeners();
         }
       },
     );
+
+    if (smsPermissionState != SmsPermissionState.granted) {
+      smsSyncIssue = smsSyncStatus;
+    }
     notifyListeners();
 
     if (smsPermissionState == SmsPermissionState.granted) {
@@ -164,6 +201,7 @@ class AppState extends ChangeNotifier {
     historicalSmsLoading = true;
     historicalSmsTotal = historical.length;
     historicalSmsDone = 0;
+    var failed = 0;
     notifyListeners();
 
     for (final event in historical) {
@@ -176,6 +214,7 @@ class AppState extends ChangeNotifier {
         );
       } catch (_) {
         // Individual failures are non-fatal — continue processing
+        failed++;
       }
       historicalSmsDone++;
       // Notify every 10 items to avoid flooding UI
@@ -183,6 +222,10 @@ class AppState extends ChangeNotifier {
     }
 
     historicalSmsLoading = false;
+    if (failed > 0) {
+      smsSyncIssue = 'Synced with $failed failed SMS items.';
+      alerts = ['Historical SMS sync: $failed failed items.', ...alerts].take(8).toList();
+    }
     notifyListeners();
     await refreshData();
   }

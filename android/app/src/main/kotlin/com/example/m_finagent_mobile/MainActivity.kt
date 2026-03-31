@@ -59,19 +59,27 @@ class MainActivity : FlutterActivity() {
     // -------------------------------------------------------------------------
 
     private fun requestSmsPermissions(result: MethodChannel.Result) {
-        val requiredPermissions = mutableListOf(
+        val smsPermissions = listOf(
             Manifest.permission.RECEIVE_SMS,
             Manifest.permission.READ_SMS,
         )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
 
-        val denied = requiredPermissions.filter {
+        val denied = smsPermissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
 
         if (denied.isEmpty()) {
+            // Notification permission is optional for SMS capture.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    permissionRequestCode + 1,
+                )
+            }
             result.success(true)
             return
         }
@@ -87,7 +95,13 @@ class MainActivity : FlutterActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode != permissionRequestCode) return
-        val granted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+        val granted = permissions
+            .zip(grantResults.toTypedArray())
+            .filter { (permission, _) ->
+                permission == Manifest.permission.RECEIVE_SMS ||
+                    permission == Manifest.permission.READ_SMS
+            }
+            .all { (_, grantResult) -> grantResult == PackageManager.PERMISSION_GRANTED }
         pendingPermissionResult?.success(granted)
         pendingPermissionResult = null
     }

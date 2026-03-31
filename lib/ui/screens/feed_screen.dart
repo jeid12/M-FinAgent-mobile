@@ -127,6 +127,28 @@ class FeedScreen extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
           ),
           const SizedBox(height: 6),
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(11),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F7FB),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFD8E3ED)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.sync_rounded, size: 16, color: Color(0xFF0A5D7F)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    state.smsSyncStatus,
+                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF1F3B4D)),
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (state.historicalSmsLoading)
             Container(
               margin: const EdgeInsets.only(bottom: 10),
