@@ -46,9 +46,13 @@ class TransactionTile extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    Text(
-                      '${item.provider} • $time',
-                      style: const TextStyle(color: Colors.black54, fontSize: 12),
+                    Expanded(
+                      child: Text(
+                        '${item.provider} • $time',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.black54, fontSize: 12),
+                      ),
                     ),
                     const SizedBox(width: 6),
                     _KindChip(label: meta.label, color: meta.iconBg),
