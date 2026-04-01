@@ -70,6 +70,54 @@ class UserProfile {
     };
   }
 
+  Map<String, dynamic> toPatchJson({required UserProfile previous}) {
+    String? norm(String? value) {
+      final trimmed = value?.trim();
+      if (trimmed == null || trimmed.isEmpty) return null;
+      return trimmed;
+    }
+
+    String? dateOnly(DateTime? value) => value?.toIso8601String().split('T').first;
+
+    final patch = <String, dynamic>{};
+
+    final nextFullName = norm(fullName);
+    final prevFullName = norm(previous.fullName);
+    if (nextFullName != prevFullName) patch['full_name'] = nextFullName;
+
+    final nextEmail = norm(email);
+    final prevEmail = norm(previous.email);
+    if (nextEmail != prevEmail) patch['email'] = nextEmail;
+
+    if (age != previous.age) patch['age'] = age;
+
+    final nextGender = norm(gender);
+    final prevGender = norm(previous.gender);
+    if (nextGender != prevGender) patch['gender'] = nextGender;
+
+    final nextProfession = norm(profession);
+    final prevProfession = norm(previous.profession);
+    if (nextProfession != prevProfession) patch['profession'] = nextProfession;
+
+    final nextBio = norm(bio);
+    final prevBio = norm(previous.bio);
+    if (nextBio != prevBio) patch['bio'] = nextBio;
+
+    final nextPhoto = norm(profileImageUrl);
+    final prevPhoto = norm(previous.profileImageUrl);
+    if (nextPhoto != prevPhoto) patch['profile_image_url'] = nextPhoto;
+
+    if (goalAmountRwf != previous.goalAmountRwf) {
+      patch['goal_amount_rwf'] = goalAmountRwf;
+    }
+
+    final nextGoalDate = dateOnly(goalTargetDate);
+    final prevGoalDate = dateOnly(previous.goalTargetDate);
+    if (nextGoalDate != prevGoalDate) patch['goal_target_date'] = nextGoalDate;
+
+    return patch;
+  }
+
   UserProfile copyWith({
     String? fullName,
     String? phoneNumber,

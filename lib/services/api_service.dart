@@ -234,11 +234,11 @@ class ApiService {
     return UserProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  Future<UserProfile> updateProfile(UserProfile profile) async {
+  Future<UserProfile> updateProfilePatch(Map<String, dynamic> patchPayload) async {
     final uri = _uri('auth/me');
     var response = await _putJson(
       uri,
-      profile.toUpdateJson(),
+      patchPayload,
       headers: _headers(json: true),
     );
 
@@ -246,7 +246,7 @@ class ApiService {
       // Backward compatibility when server still exposes POST /auth/me.
       response = await _postJson(
         uri,
-        profile.toUpdateJson(),
+        patchPayload,
         headers: _headers(json: true),
       );
     }

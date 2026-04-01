@@ -367,10 +367,24 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> saveProfile(UserProfile nextProfile) async {
+    final current = profile;
+    if (current == null) {
+      profile = nextProfile;
+      notifyListeners();
+      return;
+    }
+
+    final patch = nextProfile.toPatchJson(previous: current);
+    if (patch.isEmpty) {
+      profile = nextProfile;
+      notifyListeners();
+      return;
+    }
+
     profileLoading = true;
     notifyListeners();
     try {
-      profile = await _api.updateProfile(nextProfile);
+      profile = await _api.updateProfilePatch(patch);
       alerts = ['Profile updated successfully.', ...alerts].take(8).toList();
     } finally {
       profileLoading = false;
