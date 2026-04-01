@@ -236,11 +236,21 @@ class ApiService {
 
   Future<UserProfile> updateProfile(UserProfile profile) async {
     final uri = _uri('auth/me');
-    final response = await _putJson(
+    var response = await _putJson(
       uri,
       profile.toUpdateJson(),
       headers: _headers(json: true),
     );
+
+    if (response.statusCode == 405) {
+      // Backward compatibility when server still exposes POST /auth/me.
+      response = await _postJson(
+        uri,
+        profile.toUpdateJson(),
+        headers: _headers(json: true),
+      );
+    }
+
     if (response.statusCode != 200) {
       throw Exception(
         'Failed to update profile (${response.statusCode}): ${_errorDetail(response)}',
