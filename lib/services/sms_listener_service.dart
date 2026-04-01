@@ -156,6 +156,12 @@ class SmsListenerService {
   String? _detectProvider(String address, String body) {
     final combined = '${address.toLowerCase()} ${body.toLowerCase()}';
 
+    if (combined.contains('*165') ||
+        combined.contains(' 165 ') ||
+        combined.contains('mtn rw') ||
+        combined.contains('mtn momo')) {
+      return 'MTN';
+    }
     if (combined.contains('mtn') || combined.contains('momo')) return 'MTN';
     if (combined.contains('airtel')) return 'Airtel';
     if (combined.contains('mocash') || combined.contains('mo cash')) return 'MoCash';
@@ -174,6 +180,11 @@ class SmsListenerService {
       return 'Other';
     }
 
+    // Fallback for common transaction references that may not include provider keywords.
+    if (combined.contains('txid') || combined.contains('txn') || combined.contains('momo')) {
+      return 'Other';
+    }
+
     return null;
   }
 
@@ -181,6 +192,10 @@ class SmsListenerService {
     const verbs = [
       'received', 'sent', 'paid', 'payment', 'withdrawn', 'deposited',
       'balance', 'transaction', 'transfer', 'credited', 'debited',
+      'txid', 'txn', 'cash power', 'bundle', 'airtime',
+      // Common Kinyarwanda/French transaction wording
+      'mwakiriye', 'yoherereje', 'wohereje', 'avuye kuri',
+      'kuri konti', 'mufite', 'wakiriye', 'envoye', 'recu',
     ];
     return verbs.any(text.contains);
   }

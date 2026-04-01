@@ -224,6 +224,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> triggerSmsSetup() async {
+    if (!isAuthenticated) return;
+    await _prepareSmsConsentAndIngestion();
+    if (!_smsIngestionStarted && !smsDisclosureRequired) {
+      await _startSmsIngestion();
+    }
+    if (smsPermissionState == SmsPermissionState.granted) {
+      await _ingestCapturedQueue();
+    }
+  }
   // ---------------------------------------------------------------------------
   // SMS ingestion — real-time listener + one-shot historical fetch
   // ---------------------------------------------------------------------------
