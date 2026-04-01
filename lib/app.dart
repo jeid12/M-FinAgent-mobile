@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'state/app_state.dart';
@@ -53,7 +54,15 @@ class _FinAgentAppState extends State<FinAgentApp> {
       });
     }
 
-    setState(() {});
+    final phase = WidgetsBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle || phase == SchedulerPhase.postFrameCallbacks) {
+      setState(() {});
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {});
+      });
+    }
   }
 
   Future<void> _showSmsDisclosureDialog() async {

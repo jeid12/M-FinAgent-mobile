@@ -26,6 +26,6 @@ void main() {
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Savings Goal'), findsOneWidget);
+    expect(find.text('Your Financial Profile'), findsOneWidget);
   });
 }
