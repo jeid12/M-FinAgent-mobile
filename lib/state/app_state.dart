@@ -36,6 +36,8 @@ class AppState extends ChangeNotifier {
   List<ChatMessage> chatMessages = [];
   List<String> alerts = [];
   bool profileLoading = false;
+  bool smsDisclosureRequired = false;
+  bool _smsIngestionStarted = false;
 
   // Historical SMS ingestion progress
   bool historicalSmsLoading = false;
@@ -51,6 +53,7 @@ class AppState extends ChangeNotifier {
   bool _isDisposed = false;
 
   static const _chatCacheKey = 'chat_messages_cache';
+  static const _smsDisclosureAcceptedKey = 'sms_disclosure_accepted_v1';
 
   String get smsPermissionLabel => switch (smsPermissionState) {
         SmsPermissionState.granted => 'Granted',
@@ -160,7 +163,7 @@ class AppState extends ChangeNotifier {
     await _loadChatHistory();
     await refreshProfile();
     await refreshData();
-    await _startSmsIngestion();
+    await _prepareSmsConsentAndIngestion();
     _connectAlerts();
   }
 
@@ -183,6 +186,41 @@ class AppState extends ChangeNotifier {
     lastSmsDetectedAt = null;
     lastSmsSyncedAt = null;
     smsSyncIssue = null;
+    smsDisclosureRequired = false;
+    _smsIngestionStarted = false;
+    notifyListeners();
+  }
+
+  Future<void> _prepareSmsConsentAndIngestion() async {
+    if (kIsWeb || !Platform.isAndroid) {
+      await _startSmsIngestion();
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final accepted = prefs.getBool(_smsDisclosureAcceptedKey) ?? false;
+    if (accepted) {
+      await _startSmsIngestion();
+      return;
+    }
+
+    smsDisclosureRequired = true;
+    smsSyncIssue = 'SMS tracking is paused until you approve SMS disclosure.';
+    notifyListeners();
+  }
+
+  Future<void> acceptSmsDisclosureAndStart() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_smsDisclosureAcceptedKey, true);
+    smsDisclosureRequired = false;
+    smsSyncIssue = null;
+    notifyListeners();
+    await _startSmsIngestion();
+  }
+
+  void dismissSmsDisclosureForNow() {
+    smsDisclosureRequired = false;
+    smsSyncIssue = 'SMS tracking disabled. Enable SMS access when ready.';
     notifyListeners();
   }
 
@@ -191,6 +229,9 @@ class AppState extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<void> _startSmsIngestion() async {
+    if (_smsIngestionStarted) return;
+    _smsIngestionStarted = true;
+
     smsPermissionState = await _smsListener.start(
       onFinancialSms: (SmsEvent event) async {
         final phoneNumber = activePhoneNumber;
@@ -218,6 +259,7 @@ class AppState extends ChangeNotifier {
     );
 
     if (smsPermissionState != SmsPermissionState.granted) {
+      _smsIngestionStarted = false;
       smsSyncIssue = smsSyncStatus;
     }
     notifyListeners();

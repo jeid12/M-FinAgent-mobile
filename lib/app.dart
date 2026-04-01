@@ -20,6 +20,7 @@ class FinAgentApp extends StatefulWidget {
 class _FinAgentAppState extends State<FinAgentApp> {
   late final AppState _state;
   int _index = 0;
+  bool _showingSmsDisclosure = false;
 
   @override
   void initState() {
@@ -44,7 +45,50 @@ class _FinAgentAppState extends State<FinAgentApp> {
     if (!mounted) {
       return;
     }
+
+    if (_state.isAuthenticated && _state.smsDisclosureRequired && !_showingSmsDisclosure) {
+      _showingSmsDisclosure = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showSmsDisclosureDialog();
+      });
+    }
+
     setState(() {});
+  }
+
+  Future<void> _showSmsDisclosureDialog() async {
+    if (!mounted) return;
+
+    final accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Allow SMS Access for Automatic Finance Tracking'),
+          content: const Text(
+            'MFinAgent uses SMS access to detect your mobile-money and bank transaction messages and automatically build your spending feed, balances, and financial insights. We only use relevant financial SMS content for this app experience. You can turn this off anytime in Android settings.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted) return;
+    if (accepted == true) {
+      await _state.acceptSmsDisclosureAndStart();
+    } else {
+      _state.dismissSmsDisclosureForNow();
+    }
+    _showingSmsDisclosure = false;
   }
 
   @override
