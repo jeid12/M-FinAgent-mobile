@@ -5,10 +5,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:label="m_finagent_mobile"
+        android:label="MFinAgent"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false">
         <receiver
             android:name=".SmsCaptureReceiver"
             android:enabled="true"

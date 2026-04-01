@@ -19,23 +19,6 @@ class SmsEvent {
   final DateTime occurredAt;
 }
 
-/// Expanded list of financial SMS senders recognised in Rwanda.
-const _financialKeywords = [
-  // Mobile money
-  'mtn', 'momo', 'airtel',
-  // Loan providers
-  'mocash', 'mo cash',
-  // Banks
-  'bank of kigali', 'bk mobile', 'equity bank', 'i&m bank',
-  'cogebanque', 'access bank', 'gt bank',
-  // Utilities / services
-  'irembo', 'wasac', 'rwasco', 'reg ', 'umeme',
-  'tap&go', 'tapngo',
-  // Generic financial keywords (catches unlabelled transaction alerts)
-  'rwf', 'frw', 'transaction', 'payment', 'received', 'sent to',
-  'withdrawn', 'deposited', 'balance',
-];
-
 class SmsListenerService {
   SmsListenerService();
 

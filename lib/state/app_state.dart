@@ -403,9 +403,7 @@ class AppState extends ChangeNotifier {
         return imageUrl;
       }
     }
-    if (current != null) {
-      await saveProfile(current.copyWith(profileImageUrl: imageUrl));
-    }
+    await saveProfile(current.copyWith(profileImageUrl: imageUrl));
     return imageUrl;
   }
 

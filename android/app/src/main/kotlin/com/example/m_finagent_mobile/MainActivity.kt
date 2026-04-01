@@ -1,4 +1,4 @@
-package com.example.m_finagent_mobile
+package com.mfinagent.mobile
 
 import android.Manifest
 import android.content.BroadcastReceiver
