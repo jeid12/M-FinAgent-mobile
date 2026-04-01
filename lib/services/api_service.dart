@@ -8,6 +8,7 @@ import '../core/config.dart';
 import '../models/chat_message.dart';
 import '../models/summary.dart';
 import '../models/transaction.dart';
+import '../models/user_profile.dart';
 
 class ApiService {
   ApiService({http.Client? client}) : _client = client ?? http.Client();
@@ -59,6 +60,24 @@ class ApiService {
   Future<http.Response> _get(Uri uri, {Map<String, String>? headers}) async {
     try {
       return await _client.get(uri, headers: headers);
+    } on SocketException catch (e) {
+      throw Exception(_networkFailureMessage(e, uri));
+    } on http.ClientException catch (e) {
+      throw Exception(_networkFailureMessage(e, uri));
+    }
+  }
+
+  Future<http.Response> _putJson(
+    Uri uri,
+    Map<String, dynamic> payload, {
+    Map<String, String>? headers,
+  }) async {
+    try {
+      return await _client.put(
+        uri,
+        headers: headers,
+        body: jsonEncode(payload),
+      );
     } on SocketException catch (e) {
       throw Exception(_networkFailureMessage(e, uri));
     } on http.ClientException catch (e) {
@@ -202,6 +221,62 @@ class ApiService {
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     return data['answer'] as String;
+  }
+
+  Future<UserProfile> fetchProfile() async {
+    final uri = _uri('auth/me');
+    final response = await _get(uri, headers: _headers());
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to load profile (${response.statusCode}): ${_errorDetail(response)}',
+      );
+    }
+    return UserProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<UserProfile> updateProfile(UserProfile profile) async {
+    final uri = _uri('auth/me');
+    final response = await _putJson(
+      uri,
+      profile.toUpdateJson(),
+      headers: _headers(json: true),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to update profile (${response.statusCode}): ${_errorDetail(response)}',
+      );
+    }
+    return UserProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<String> uploadProfileImageToCloudinary(File imageFile) async {
+    if (AppConfig.cloudinaryCloudName.isEmpty || AppConfig.cloudinaryUploadPreset.isEmpty) {
+      throw Exception(
+        'Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET.',
+      );
+    }
+
+    final uploadUri = Uri.parse(
+      'https://api.cloudinary.com/v1_1/${AppConfig.cloudinaryCloudName}/image/upload',
+    );
+    final request = http.MultipartRequest('POST', uploadUri)
+      ..fields['upload_preset'] = AppConfig.cloudinaryUploadPreset
+      ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Cloudinary upload failed (${response.statusCode}): ${_errorDetail(response)}',
+      );
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final url = body['secure_url']?.toString() ?? '';
+    if (url.isEmpty) {
+      throw Exception('Cloudinary upload succeeded but secure_url is missing.');
+    }
+    return url;
   }
 
   /// Fetch server-side chat history (newest last).

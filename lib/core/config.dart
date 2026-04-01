@@ -47,4 +47,13 @@ class AppConfig {
   }
 
   static const String phoneNumber = '+250788000001';
+
+  static const String cloudinaryCloudName = String.fromEnvironment(
+    'CLOUDINARY_CLOUD_NAME',
+    defaultValue: 'dxufhhhbl',
+  );
+  static const String cloudinaryUploadPreset = String.fromEnvironment(
+    'CLOUDINARY_UPLOAD_PRESET',
+    defaultValue: 'finagent',
+  );
 }

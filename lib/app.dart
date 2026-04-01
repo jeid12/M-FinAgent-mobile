@@ -52,10 +52,7 @@ class _FinAgentAppState extends State<FinAgentApp> {
     final pages = [
       FeedScreen(state: _state),
       ChatScreen(state: _state),
-      ProfileScreen(
-        userLabel: _state.activeIdentityLabel,
-        onLogout: _state.logout,
-      ),
+      ProfileScreen(state: _state),
     ];
 
     final isAuthenticated = _state.isAuthenticated;

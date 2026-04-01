@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/chat_message.dart';
 import '../models/summary.dart';
 import '../models/transaction.dart';
+import '../models/user_profile.dart';
 import '../services/api_service.dart';
 import '../services/sms_listener_service.dart';
 
@@ -29,9 +31,11 @@ class AppState extends ChangeNotifier {
   SmsPermissionState smsPermissionState = SmsPermissionState.unsupported;
   String? error;
   SpendingSummary summary = SpendingSummary.empty();
+  UserProfile? profile;
   List<TransactionItem> transactions = [];
   List<ChatMessage> chatMessages = [];
   List<String> alerts = [];
+  bool profileLoading = false;
 
   // Historical SMS ingestion progress
   bool historicalSmsLoading = false;
@@ -54,7 +58,37 @@ class AppState extends ChangeNotifier {
         SmsPermissionState.unsupported => 'Unavailable',
       };
 
-  String get activeIdentityLabel => activePhoneNumber ?? 'Guest';
+  String get activeIdentityLabel => profile?.displayName ?? activePhoneNumber ?? 'Guest';
+
+  String get financeQuickComment {
+    final net = summary.netFlow;
+    final expense = summary.totalExpense;
+    final income = summary.totalIncome;
+    final top = summary.byCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final topCategory = top.isNotEmpty ? top.first.key : null;
+    final topValue = top.isNotEmpty ? top.first.value : 0.0;
+    final topShare = expense > 0 ? (topValue / expense) * 100 : 0.0;
+
+    if (net < 0) {
+      return 'You are negative by ${net.abs().toStringAsFixed(0)} RWF this week. Cut ${topCategory ?? 'non-essential'} spend first and pause impulse payments for 3 days.';
+    }
+
+    final goal = profile?.goalAmountRwf;
+    if (goal != null && goal > 0) {
+      final progress = income > 0 ? (net / goal) * 100 : 0.0;
+      if (progress >= 100) {
+        return 'Great momentum: your current net can already cover your goal target. Keep the same discipline and protect savings from transfers.';
+      }
+      return 'You have covered ${progress.clamp(0, 999).toStringAsFixed(0)}% of your target pace. Keep spending focused, especially ${topCategory ?? 'variable'} (${topShare.toStringAsFixed(0)}% of expenses).';
+    }
+
+    if (topCategory != null && topShare >= 35) {
+      return 'Usage is concentrated in $topCategory (${topShare.toStringAsFixed(0)}% of expenses). Set a hard weekly cap there to keep balance stable.';
+    }
+
+    return 'Balance and usage are relatively stable. Keep a fixed weekly savings transfer before discretionary spending.';
+  }
 
   String get historicalSmsProgress =>
       historicalSmsTotal > 0 ? '$historicalSmsDone / $historicalSmsTotal' : '';
@@ -124,6 +158,7 @@ class AppState extends ChangeNotifier {
   Future<void> _startSession() async {
     alerts = [];
     await _loadChatHistory();
+    await refreshProfile();
     await refreshData();
     await _startSmsIngestion();
     _connectAlerts();
@@ -139,6 +174,7 @@ class AppState extends ChangeNotifier {
     _socket = null;
 
     summary = SpendingSummary.empty();
+    profile = null;
     transactions = [];
     chatMessages = [];
     alerts = [];
@@ -314,6 +350,49 @@ class AppState extends ChangeNotifier {
 
     loading = false;
     notifyListeners();
+  }
+
+  Future<void> refreshProfile() async {
+    if (!isAuthenticated) return;
+    profileLoading = true;
+    notifyListeners();
+    try {
+      profile = await _api.fetchProfile();
+    } catch (_) {
+      // Keep current profile on transient failure.
+    } finally {
+      profileLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> saveProfile(UserProfile nextProfile) async {
+    profileLoading = true;
+    notifyListeners();
+    try {
+      profile = await _api.updateProfile(nextProfile);
+      alerts = ['Profile updated successfully.', ...alerts].take(8).toList();
+    } finally {
+      profileLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String> uploadProfileImage(String filePath) async {
+    final imageUrl = await _api.uploadProfileImageToCloudinary(File(filePath));
+    var current = profile;
+    if (current == null) {
+      try {
+        current = await _api.fetchProfile();
+        profile = current;
+      } catch (_) {
+        return imageUrl;
+      }
+    }
+    if (current != null) {
+      await saveProfile(current.copyWith(profileImageUrl: imageUrl));
+    }
+    return imageUrl;
   }
 
   // ---------------------------------------------------------------------------

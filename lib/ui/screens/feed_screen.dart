@@ -122,6 +122,38 @@ class FeedScreen extends StatelessWidget {
               ),
           ],
           const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: const Color(0xFFEFF7EF),
+              border: Border.all(color: const Color(0xFFB8D8B8)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.tips_and_updates_rounded, color: Color(0xFF1F6E43), size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Quick Comment',
+                        style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1F6E43)),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        state.financeQuickComment,
+                        style: const TextStyle(color: Color(0xFF2E4F3A), fontSize: 12.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
           const Text(
             'Activity Feed',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
